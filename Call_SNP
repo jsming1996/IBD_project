@@ -1,0 +1,16 @@
+# For metagenomic data taxonomy annotation 
+#Software: MetaPhlan2 
+python metaphlan2.py h1.fastq --input_type fastq > h1.taxa.txt
+python merge_metaphlan_tables.py *taxa.txt taxa_all.txt
+
+# For SNV calling 
+#Software: bowtie2, bcftools 
+bowtie2 -p 12 -x ref.index --no-mixed --very-sensitive --n-ceil 0,0.01 -1 h1.fq | samtools sort -O bam -@ 24 -o - > h1ref.bam 
+bcftools mpileup -C 50 -Ou -m 3 -F 0.0002 -f ref.fa h1ref.bam > h1ref.bcf 
+bcftools call -c --variants-only -Ob --ploidy 1 h1ref.bcf > h1.bcf 
+bcftools view -Ov h1.bcf | vcfutils.pl varFilter -d 100 > h1.vcf 
+
+# Merge vcf
+bgzip h1.vcf
+bcftools index h1.vcf.gz
+bcftools merge --merge all -l listvcf -O v > snp.vcf
